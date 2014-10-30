@@ -3,6 +3,8 @@ package mil.nga.giat.geowave.store.data;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -73,25 +75,23 @@ public class PersistentEncodingTest
 			},
 			SFCType.HILBERT);
 
+	final SimpleDateFormat dateFormat = new SimpleDateFormat(
+			"yyyy-MM-dd HH:mm:ss.S");
+
 	private static final Index index = new Index(
 			strategy,
 			model,
 			DimensionalityType.SPATIAL_TEMPORAL,
 			DataType.OTHER);
 
-	Calendar sc = GregorianCalendar.getInstance();
-	Calendar ec = GregorianCalendar.getInstance();
+	Date start = null, end = null;
 
 	@Before
-	public void setUp() {
+	public void setUp()
+			throws ParseException {
 
-		sc.set(
-				Calendar.MONTH,
-				3); // avoids leap year and end of year issues
-		ec.setTime(sc.getTime());
-		ec.add(
-				Calendar.HOUR,
-				1);
+		start = dateFormat.parse("2012-04-03 13:30:23.304");
+		end = dateFormat.parse("2012-04-03 14:30:23.304");
 	}
 
 	@Test
@@ -105,8 +105,8 @@ public class PersistentEncodingTest
 				factory.createPoint(new Coordinate(
 						43.454,
 						28.232)),
-				sc.getTime(),
-				ec.getTime(),
+				start,
+				end,
 				"g1");
 		List<ByteArrayId> ids = adapter.encode(
 				entry,
@@ -133,8 +133,8 @@ public class PersistentEncodingTest
 							43.454,
 							28.242)
 				}),
-				sc.getTime(),
-				ec.getTime(),
+				start,
+				end,
 				"g1");
 		List<ByteArrayId> ids = adapter.encode(
 				entry,
@@ -172,9 +172,9 @@ public class PersistentEncodingTest
 					new Coordinate(
 							-99.22,
 							33.75000000000001), // notice that
-																	// this gets
-																	// tiled as
-																	// 33.75
+												// this gets
+												// tiled as
+												// 33.75
 					new Coordinate(
 							-99.15,
 							33.75000000000001)
@@ -214,8 +214,8 @@ public class PersistentEncodingTest
 							43.444,
 							28.232),
 				}),
-				sc.getTime(),
-				ec.getTime(),
+				start,
+				end,
 				"g1");
 		List<ByteArrayId> ids = adapter.encode(
 				entry,
@@ -237,8 +237,8 @@ public class PersistentEncodingTest
 				factory.createPoint(new Coordinate(
 						43.454,
 						28.232)),
-				sc.getTime(),
-				ec.getTime(),
+				start,
+				end,
 				"g1");
 		List<ByteArrayId> ids = adapter.encode(
 				entry,
@@ -265,8 +265,8 @@ public class PersistentEncodingTest
 							43.454,
 							28.242)
 				}),
-				sc.getTime(),
-				ec.getTime(),
+				start,
+				end,
 				"g1");
 		List<ByteArrayId> ids = adapter.encode(
 				entry,
