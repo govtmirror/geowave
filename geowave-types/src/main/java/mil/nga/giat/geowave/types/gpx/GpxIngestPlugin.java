@@ -12,6 +12,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.stream.XMLEventReader;
@@ -49,6 +50,7 @@ import org.xml.sax.SAXException;
 
 import com.google.common.collect.Iterators;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * This plugin is used for ingesting any GPX formatted data from a local file
@@ -75,6 +77,7 @@ public class GpxIngestPlugin implements
 
 	private final SimpleFeatureBuilder pointBuilder;
 	private final SimpleFeatureBuilder waypointBuilder;
+	private final SimpleFeatureBuilder routeBuilder;
 	private final SimpleFeatureBuilder trackBuilder;
 	private final SimpleFeatureType pointType;
 	private final SimpleFeatureType waypointType;
@@ -272,329 +275,13 @@ public class GpxIngestPlugin implements
 			final GpxTrack gpxTrack,
 			final ByteArrayId primaryIndexId,
 			final String globalVisibility ) {
-		final XMLInputFactory inputFactory = XMLInputFactory.newInstance();
-		XMLEventReader eventReader = null;
-		InputStream in = null;
-
-		Long timestamp = gpxTrack.getTimestamp();
-		Double elevation = null;
-		Double lat = null;
-		Double lon = null;
-		Long minTime = gpxTrack.getTimestamp();
-		Long maxTime = gpxTrack.getTimestamp();
-		long trackPoint = 0;
-		final List<Coordinate> coordinateSequence = new ArrayList<Coordinate>();
-		String name = null;
-		String cmt = null;
-		String desc = null;
-		String sym = null;
-		final List<GeoWaveData<SimpleFeature>> featureData = new ArrayList<GeoWaveData<SimpleFeature>>();
-		try {
-			in = new ByteArrayInputStream(
-					gpxTrack.getGpxfile().array());
-			eventReader = inputFactory.createXMLEventReader(in);
-
-			while (eventReader.hasNext()) {
-				XMLEvent event = eventReader.nextEvent();
-				if (event.isStartElement()) {
-					StartElement node = event.asStartElement();
-					switch (node.getName().getLocalPart()) {
-						case "wpt": {
-							node = event.asStartElement();
-							final Iterator<Attribute> attributes = node.getAttributes();
-							while (attributes.hasNext()) {
-								final Attribute a = attributes.next();
-								if (a.getName().getLocalPart().equals(
-										"lon")) {
-									lon = Double.parseDouble(a.getValue());
-								}
-								else {
-									lat = Double.parseDouble(a.getValue());
-								}
-							}
-							while (!(event.isEndElement() && event.asEndElement().getName().getLocalPart().equals(
-									"wpt"))) {
-								if (event.isStartElement()) {
-									node = event.asStartElement();
-									switch (node.getName().getLocalPart()) {
-										case "ele": {
-											event = eventReader.nextEvent();
-											elevation = Double.parseDouble(event.asCharacters().getData());
-											break;
-										}
-										case "name": {
-											event = eventReader.nextEvent();
-											name = event.asCharacters().getData();
-											break;
-										}
-										case "cmt": {
-											event = eventReader.nextEvent();
-											cmt = event.asCharacters().getData();
-											break;
-										}
-										case "desc": {
-											event = eventReader.nextEvent();
-											desc = event.asCharacters().getData();
-											break;
-										}
-										case "sym": {
-											event = eventReader.nextEvent();
-											sym = event.asCharacters().getData();
-											break;
-										}
-
-									}
-								}
-								event = eventReader.nextEvent();
-							}
-							if ((lon != null) && (lat != null)) {
-								final Coordinate p = new Coordinate(
-										lon,
-										lat);
-								waypointBuilder.set(
-										"geometry",
-										GeometryUtils.GEOMETRY_FACTORY.createPoint(p));
-								waypointBuilder.set(
-										"Latitude",
-										lat);
-								waypointBuilder.set(
-										"Longitude",
-										lon);
-								waypointBuilder.set(
-										"Elevation",
-										elevation);
-								waypointBuilder.set(
-										"Name",
-										name);
-								waypointBuilder.set(
-										"Comment",
-										cmt);
-								waypointBuilder.set(
-										"Description",
-										desc);
-								waypointBuilder.set(
-										"Symbol",
-										sym);
-								featureData.add(new GeoWaveData<SimpleFeature>(
-										waypointKey,
-										primaryIndexId,
-										waypointBuilder.buildFeature(name + gpxTrack.getTrackid() + "_" + lat.hashCode() + "_" + lon.hashCode())));
-								trackPoint++;
-								lat = null;
-								lon = null;
-								elevation = null;
-								name = null;
-								cmt = null;
-								desc = null;
-								sym = null;
-							}
-							break;
-
-						}
-						case "trkpt": {
-							node = event.asStartElement();
-							final Iterator<Attribute> attributes = node.getAttributes();
-							while (attributes.hasNext()) {
-								final Attribute a = attributes.next();
-								if (a.getName().getLocalPart().equals(
-										"lon")) {
-									lon = Double.parseDouble(a.getValue());
-								}
-								else {
-									lat = Double.parseDouble(a.getValue());
-								}
-							}
-							while (!(event.isEndElement() && event.asEndElement().getName().getLocalPart().equals(
-									"trkpt"))) {
-								if (event.isStartElement()) {
-									node = event.asStartElement();
-									switch (node.getName().getLocalPart()) {
-										case "ele": {
-											event = eventReader.nextEvent();
-											elevation = Double.parseDouble(event.asCharacters().getData());
-											break;
-										}
-										case "time": {
-											event = eventReader.nextEvent();
-											try {
-												timestamp = GpxUtils.TIME_FORMAT_SECONDS.parse(
-														event.asCharacters().getData()).getTime();
-
-											}
-											catch (final Exception t) {
-												try {
-													timestamp = GpxUtils.TIME_FORMAT_MILLIS.parse(
-															event.asCharacters().getData()).getTime();
-												}
-												catch (final Exception t2) {
-
-												}
-											}
-
-											if (timestamp != null) {
-												if ((minTime == null) || (timestamp < minTime)) {
-													minTime = timestamp;
-												}
-												if ((maxTime == null) || (timestamp > maxTime)) {
-													maxTime = timestamp;
-												}
-											}
-											break;
-										}
-									}
-								}
-								event = eventReader.nextEvent();
-							}
-
-							if ((lon != null) && (lat != null)) {
-								final Coordinate p = new Coordinate(
-										lon,
-										lat);
-								coordinateSequence.add(p);
-								pointBuilder.set(
-										"geometry",
-										GeometryUtils.GEOMETRY_FACTORY.createPoint(p));
-								pointBuilder.set(
-										"Latitude",
-										lat);
-								pointBuilder.set(
-										"Longitude",
-										lon);
-								pointBuilder.set(
-										"Elevation",
-										elevation);
-								if (timestamp != null) {
-									pointBuilder.set(
-											"Timestamp",
-											new Date(
-													timestamp));
-								}
-								else {
-									pointBuilder.set(
-											"Timestamp",
-											null);
-								}
-
-								featureData.add(new GeoWaveData<SimpleFeature>(
-										pointKey,
-										primaryIndexId,
-										pointBuilder.buildFeature(gpxTrack.getTrackid().toString() + "_" + trackPoint)));
-
-								lat = null;
-								lon = null;
-								elevation = null;
-								timestamp = null;
-							}
-							trackPoint++;
-							break;
-						}
-
-					}
-				}
-			}
-		}
-		catch (final Exception e) {
-			LOGGER.error(
-					"Error reading track XML stream",
-					e);
-		}
-		finally {
-			try {
-				eventReader.close();
-			}
-			catch (final Exception e2) {
-				LOGGER.warn(
-						"Unable to close track XML stream",
-						e2);
-			}
-			IOUtils.closeQuietly(in);
-		}
-
-		try {
-			trackBuilder.set(
-					"geometry",
-					GeometryUtils.GEOMETRY_FACTORY.createLineString(coordinateSequence.toArray(new Coordinate[coordinateSequence.size()])));
-			boolean setDuration = true;
-			if (minTime != null) {
-				trackBuilder.set(
-						"StartTimeStamp",
-						new Date(
-								minTime));
-			}
-			else {
-				setDuration = false;
-
-				trackBuilder.set(
-						"StartTimeStamp",
-						null);
-			}
-			if (maxTime != null) {
-				trackBuilder.set(
-						"EndTimeStamp",
-						new Date(
-								maxTime));
-			}
-			else {
-				setDuration = false;
-
-				trackBuilder.set(
-						"EndTimeStamp",
-						null);
-			}
-			if (setDuration) {
-				trackBuilder.set(
-						"Duration",
-						maxTime - minTime);
-			}
-			else {
-				trackBuilder.set(
-						"Duration",
-						null);
-			}
-
-			trackBuilder.set(
-					"NumberPoints",
-					trackPoint);
-			trackBuilder.set(
-					"TrackId",
-					gpxTrack.getTrackid().toString());
-			trackBuilder.set(
-					"UserId",
-					gpxTrack.getUserid());
-			trackBuilder.set(
-					"User",
-					gpxTrack.getUser());
-			trackBuilder.set(
-					"Description",
-					gpxTrack.getDescription());
-
-			if ((gpxTrack.getTags() != null) && (gpxTrack.getTags().size() > 0)) {
-				final String tags = org.apache.commons.lang.StringUtils.join(
-						gpxTrack.getTags(),
-						TAG_SEPARATOR);
-				trackBuilder.set(
-						"Tags",
-						tags);
-			}
-			else {
-				trackBuilder.set(
-						"Tags",
-						null);
-			}
-
-			featureData.add(new GeoWaveData<SimpleFeature>(
-					trackKey,
-					primaryIndexId,
-					trackBuilder.buildFeature(gpxTrack.getTrackid().toString())));
-		}
-		catch (final IllegalArgumentException e) {
-			LOGGER.warn(
-					"Track: " + gpxTrack.getTrackid() + " only had 1 point",
-					e);
-
-		}
-		return new CloseableIterator.Wrapper<GeoWaveData<SimpleFeature>>(
-				featureData.iterator());
+		final InputStream in = new ByteArrayInputStream(
+				gpxTrack.getGpxfile().array());
+		return  new GPXConsumer(
+				in,
+				primaryIndexId,
+				gpxTrack.getTrackid(),
+				globalVisibility);
 	}
 
 	@Override
@@ -643,5 +330,476 @@ public class GpxIngestPlugin implements
 		@Override
 		public void fromBinary(
 				final byte[] bytes ) {}
+	}
+
+	private class GPXConsumer implements
+			CloseableIterator<GeoWaveData<SimpleFeature>>
+	{
+
+		final InputStream fileStream;
+		final ByteArrayId primaryIndexId;
+		final Long inputID;
+		final String globalVisibility;
+		long trackID = 0;
+
+		final XMLInputFactory inputFactory = XMLInputFactory.newInstance();
+		XMLEventReader eventReader;
+
+		GeoWaveData<SimpleFeature> nextFeature = null;
+		Coordinate nextCoordinate = null;
+
+		public GPXConsumer(
+				InputStream fileStream,
+				ByteArrayId primaryIndexId,
+				Long inputID,
+				String globalVisibility ) {
+			super();
+			this.fileStream = fileStream;
+			this.primaryIndexId = primaryIndexId;
+			this.inputID = inputID;
+			this.globalVisibility = globalVisibility;
+			try {
+				eventReader = inputFactory.createXMLEventReader(fileStream);
+				nextFeature = getNext();
+			}
+			catch (IOException | XMLStreamException e) {
+				LOGGER.error(
+						"Error processing GPX input stream",
+						e);
+				nextFeature = null;
+			}
+		}
+
+		@Override
+		public boolean hasNext() {
+			return (nextFeature != null);
+		}
+
+		@Override
+		public GeoWaveData<SimpleFeature> next() {
+			GeoWaveData<SimpleFeature> ret = nextFeature;
+			try {
+				nextFeature = getNext();
+			}
+			catch (IOException | XMLStreamException e) {
+				LOGGER.error(
+						"Error processing GPX input stream",
+						e);
+				nextFeature = null;
+			}
+			return ret;
+		}
+
+		@Override
+		public void remove() {}
+
+		@Override
+		public void close()
+				throws IOException {
+			try {
+				eventReader.close();
+			}
+			catch (final Exception e2) {
+				LOGGER.warn(
+						"Unable to close track XML stream",
+						e2);
+			}
+			IOUtils.closeQuietly(fileStream);
+
+		}
+
+		private GeoWaveData<SimpleFeature> getNext()
+				throws IOException,
+				XMLStreamException {
+
+			while (eventReader.hasNext()) {
+				XMLEvent event = eventReader.peek();
+				if (event.isStartElement()) {
+					StartElement node = event.asStartElement();
+					switch (node.getName().getLocalPart()) {
+						case "gpx": continue;
+						default: return xx(eventReader, node.getName().getLocalPart());
+					}
+				}
+			}
+			return null;
+		}
+
+		Stack<WayPoint> currentPointStack = new Stack<WayPoint>();
+
+		private GeoWaveData<SimpleFeature> xx(
+				XMLEventReader eventReader,
+				String elType )
+				throws XMLStreamException {
+			XMLEvent event = eventReader.peek();
+			WayPoint point = currentPointStack.peek();
+
+			while (!(event.isEndElement() && event.asEndElement().getName().getLocalPart().equals(
+					elType))) {
+				if (event.isStartElement()) {
+					if (!dx(
+							event,
+							point)) {
+						WayPoint child = new WayPoint();
+						currentPointStack.push(child);
+						GeoWaveData<SimpleFeature> newFeature = xx(
+								eventReader,
+								event.asStartElement().getName().getLocalPart());
+						currentPointStack.pop();
+						if (newFeature != null) {
+							point.addChild(child);
+							return newFeature;
+						}
+					}
+				}
+				eventReader.nextEvent();
+				event = eventReader.peek();
+			}
+			return processEnd(
+					elType,
+					point);
+		}
+
+		private GeoWaveData<SimpleFeature> processEnd(
+				String elType,
+				WayPoint point ) {
+			switch (elType) {
+				case "trk": {
+					Coordinate[] childSequence =point.buildCoordinates();	
+					trackBuilder.set(
+							"geometry",
+							GeometryUtils.GEOMETRY_FACTORY.createLineString(childSequence));
+					boolean setDuration = true;
+					if (point.minTime < Long.MAX_VALUE) {
+						trackBuilder.set(
+								"StartTimeStamp",
+								new Date(
+										point.minTime));
+					}
+					else {
+						setDuration = false;
+
+						trackBuilder.set(
+								"StartTimeStamp",
+								null);
+					}
+					if (point.maxTime > 0) {
+						trackBuilder.set(
+								"EndTimeStamp",
+								new Date(
+										point.maxTime));
+					}
+					else {
+						setDuration = false;
+
+						trackBuilder.set(
+								"EndTimeStamp",
+								null);
+					}
+					if (setDuration) {
+						trackBuilder.set(
+								"Duration",
+								point.maxTime - point.minTime);
+					}
+					else {
+						trackBuilder.set(
+								"Duration",
+								null);
+					}
+
+					trackBuilder.set(
+							"NumberPoints",
+							childSequence.length);
+					trackBuilder.set(
+							"TrackId",
+							gpxTrack.getTrackid().toString());
+					trackBuilder.set(
+							"UserId",
+							gpxTrack.getUserid());
+					trackBuilder.set(
+							"User",
+							gpxTrack.getUser());
+					trackBuilder.set(
+							"Description",
+							gpxTrack.getDescription());
+
+					if ((gpxTrack.getTags() != null) && (gpxTrack.getTags().size() > 0)) {
+						final String tags = org.apache.commons.lang.StringUtils.join(
+								gpxTrack.getTags(),
+								TAG_SEPARATOR);
+						trackBuilder.set(
+								"Tags",
+								tags);
+					}
+					else {
+						trackBuilder.set(
+								"Tags",
+								null);
+					}
+
+					return new GeoWaveData<SimpleFeature>(
+							trackKey,
+							primaryIndexId,
+							trackBuilder.buildFeature(gpxTrack.getTrackid().toString()));
+				}
+				case "wpt": {
+					if (point.build(waypointBuilder)) {
+						return new GeoWaveData<SimpleFeature>(
+								waypointKey,
+								primaryIndexId,
+								waypointBuilder.buildFeature(point.name + inputID + "_" + point.lat.hashCode() + "_" + point.lon.hashCode()));
+
+					}
+					break;
+				}
+				case "rtept": {
+					if (point.build(routeBuilder)) {
+						return new GeoWaveData<SimpleFeature>(
+								waypointKey,
+								primaryIndexId,
+								routeBuilder.buildFeature(point.name + inputID + "_" + point.lat.hashCode() + "_" + point.lon.hashCode()));
+
+					}
+					break;
+				}
+				case "trkpt": {
+					if (point.build(pointBuilder)) {
+						if (point.timestamp == null) {
+							pointBuilder.set(
+									"Timestamp",
+									null);
+						}
+						return new GeoWaveData<SimpleFeature>(
+								pointKey,
+								primaryIndexId,
+								pointBuilder.buildFeature(inputID.toString() + "_" + (point.name != null ? point.name + "_" : "") + trackID++));
+					}
+
+					break;
+				}
+			}
+		}
+
+		private WayPoint parseWayPointTypeElement(
+				XMLEventReader eventReader,
+				String elType )
+				throws XMLStreamException {
+			XMLEvent event = eventReader.peek();
+			WayPoint point = new WayPoint();
+
+			while (!(event.isEndElement() && event.asEndElement().getName().getLocalPart().equals(
+					elType))) {
+				if (event.isStartElement()) {
+					dx(
+							event,
+							point);
+				}
+				eventReader.nextEvent();
+				event = eventReader.peek();
+			}
+			return point;
+		}
+	}
+
+	private boolean dx(
+			XMLEvent event,
+			WayPoint point ) {
+		StartElement node = event.asStartElement();
+		final Iterator<Attribute> attributes = node.getAttributes();
+		while (attributes.hasNext()) {
+			final Attribute a = attributes.next();
+			if (a.getName().getLocalPart().equals(
+					"lon")) {
+				point.lon = Double.parseDouble(a.getValue());
+			}
+			else {
+				point.lat = Double.parseDouble(a.getValue());
+			}
+		}
+		switch (node.getName().getLocalPart()) {
+			case "ele": {
+				point.elevation = Double.parseDouble(event.asCharacters().getData());
+				break;
+			}
+			case "magvar": {
+				point.magvar = Double.parseDouble(event.asCharacters().getData());
+				break;
+			}
+			case "geoidheight": {
+				point.geoidheight = Double.parseDouble(event.asCharacters().getData());
+				break;
+			}
+			case "name": {
+				point.name = event.asCharacters().getData();
+				break;
+			}
+			case "cmt": {
+				point.cmt = event.asCharacters().getData();
+				break;
+			}
+			case "desc": {
+				point.desc = event.asCharacters().getData();
+				break;
+			}
+			case "src": {
+				point.src = event.asCharacters().getData();
+				break;
+			}
+			case "text": {
+				point.link = event.asCharacters().getData();
+				break;
+			}
+			case "sym": {
+				point.sym = event.asCharacters().getData();
+				break;
+			}
+			case "type": {
+				point.type = event.asCharacters().getData();
+				break;
+			}
+			case "sat": {
+				point.sat = Long.parseLong(event.asCharacters().getData());
+				break;
+			}
+			case "vdop": {
+				point.vdop = Double.parseDouble(event.asCharacters().getData());
+				break;
+			}
+			case "hdop": {
+				point.hdop = Double.parseDouble(event.asCharacters().getData());
+				break;
+			}
+			case "pdop": {
+				point.pdop = Double.parseDouble(event.asCharacters().getData());
+				break;
+			}
+			case "time": {
+				try {
+					point.timestamp = GpxUtils.TIME_FORMAT_SECONDS.parse(
+							event.asCharacters().getData()).getTime();
+
+				}
+				catch (final Exception t) {
+					try {
+						point.timestamp = GpxUtils.TIME_FORMAT_MILLIS.parse(
+								event.asCharacters().getData()).getTime();
+					}
+					catch (final Exception t2) {
+
+					}
+				}
+				break;
+			}
+			default:
+				return false;
+		}
+		return true;
+
+	}
+
+	private static class WayPoint
+	{
+		Long timestamp = null;
+		Double elevation = null;
+		Double lat = null;
+		Double lon = null;
+		Double magvar = null;
+		Double geoidheight = null;
+		String name = null;
+		String cmt = null;
+		String desc = null;
+		String src = null;
+		String link = null;
+		String sym = null;
+		String type = null;
+		Long sat = null;
+		Double hdop = null;
+		Double pdop = null;
+		Double vdop = null;
+
+		Coordinate coordinate = null;
+		List<WayPoint> children = null;
+		long minTime = Long.MAX_VALUE;
+		long maxTime = 0;
+
+		public void addChild(
+				WayPoint child ) {
+			if (children == null) {
+				children = new ArrayList<WayPoint>();
+			}
+			children.add(child);
+			updateTime(child.timestamp);
+
+		}
+
+		public Coordinate getCoordinate() {
+			if (coordinate != null) return coordinate;
+			if (lat != null && lon != null) coordinate = new Coordinate(
+					lon,
+					lat);
+			return coordinate;
+		}
+
+		public Coordinate[] buildCoordinates() {
+			if (children == null) return new Coordinate[0];
+			Coordinate[] coords = new Coordinate[children.size()];
+			for (int i =0 ; i < coords.length; i++) {
+				coords[i] = children.get(i).getCoordinate();
+			}
+			return coords;
+		}
+		
+		private void updateTime(
+				Long timestamp ) {
+			if (timestamp != null) {
+				minTime = Math.min(
+						timestamp.longValue(),
+						minTime);
+				maxTime = Math.max(
+						timestamp.longValue(),
+						maxTime);
+			}
+		}
+
+		public boolean build(
+				SimpleFeatureBuilder waypointBuilder ) {
+			if ((lon != null) && (lat != null)) {
+				final Coordinate p = getCoordinate();
+				waypointBuilder.set(
+						"geometry",
+						GeometryUtils.GEOMETRY_FACTORY.createPoint(p));
+				waypointBuilder.set(
+						"Latitude",
+						lat);
+				waypointBuilder.set(
+						"Longitude",
+						lon);
+				if (elevation != null) waypointBuilder.set(
+						"Elevation",
+						elevation);
+				if (name != null) waypointBuilder.set(
+						"Name",
+						name);
+				if (cmt != null) waypointBuilder.set(
+						"Comment",
+						cmt);
+				if (desc != null) waypointBuilder.set(
+						"Description",
+						desc);
+				if (sym != null) waypointBuilder.set(
+						"Symbol",
+						sym);
+				if (timestamp != null) {
+					waypointBuilder.set(
+							"Timestamp",
+							new Date(
+									timestamp));
+				}
+
+				return true;
+			}
+			else
+				return false;
+		}
 	}
 }

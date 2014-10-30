@@ -57,6 +57,7 @@ public class GpxUtils
 	public static final DateFormat TIME_FORMAT_SECONDS = new SimpleDateFormat(
 			"yyyy-MM-dd'T'HH:mm:ss'Z'");
 	public static String GPX_POINT_FEATURE = "gpxpoint";
+	public static String GPX_ROUTE_FEATURE = "gpxroute";
 	public static String GPX_TRACK_FEATURE = "gpxtrack";
 	public static String GPX_WAYPOINT_FEATURE = "gpxwaypoint";
 
