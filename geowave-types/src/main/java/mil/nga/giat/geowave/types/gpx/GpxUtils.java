@@ -186,7 +186,10 @@ public class GpxUtils
 				Geometry.class).nillable(
 				true).buildDescriptor(
 				"geometry"));
-
+                simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				String.class).nillable(
+				true).buildDescriptor(
+				"Name"));
 		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
 				Date.class).nillable(
 				true).buildDescriptor(
@@ -211,6 +214,63 @@ public class GpxUtils
 				Long.class).nillable(
 				true).buildDescriptor(
 				"UserId"));
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				String.class).nillable(
+				true).buildDescriptor(
+				"User"));
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				String.class).nillable(
+				true).buildDescriptor(
+				"Description"));
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				String.class).nillable(
+				true).buildDescriptor(
+				"Tags"));
+
+		return simpleFeatureTypeBuilder.buildFeatureType();
+
+	}
+        
+        
+        public static SimpleFeatureType createGPXRouteDataType() {
+
+		final SimpleFeatureTypeBuilder simpleFeatureTypeBuilder = new SimpleFeatureTypeBuilder();
+		simpleFeatureTypeBuilder.setName(GPX_ROUTE_FEATURE);
+
+		final AttributeTypeBuilder attributeTypeBuilder = new AttributeTypeBuilder();
+
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				Geometry.class).nillable(
+				true).buildDescriptor(
+				"geometry"));
+                simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				String.class).nillable(
+				true).buildDescriptor(
+				"Name"));
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				Date.class).nillable(
+				true).buildDescriptor(
+				"StartTimeStamp"));
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				Date.class).nillable(
+				true).buildDescriptor(
+				"EndTimeStamp"));
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				Long.class).nillable(
+				true).buildDescriptor(
+				"Duration"));
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				Long.class).nillable(
+				true).buildDescriptor(
+				"NumberPoints"));
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				String.class).nillable(
+				true).buildDescriptor(
+				"TrackId"));
+		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
+				String.class).nillable(
+				true).buildDescriptor(
+				"Symbol"));
 		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
 				String.class).nillable(
 				true).buildDescriptor(
@@ -255,6 +315,7 @@ public class GpxUtils
 				Date.class).nillable(
 				true).buildDescriptor(
 				"Timestamp"));
+
 
 		return simpleFeatureTypeBuilder.buildFeatureType();
 
