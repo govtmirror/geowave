@@ -1,5 +1,8 @@
 package mil.nga.giat.geowave.types.gpx;
 
+import com.google.common.collect.Iterators;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -9,6 +12,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -47,10 +51,6 @@ import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.xml.sax.SAXException;
-
-import com.google.common.collect.Iterators;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * This plugin is used for ingesting any GPX formatted data from a local file
@@ -256,7 +256,8 @@ public class GpxIngestPlugin implements
 		return  new GPXConsumer(
 				in,
 				primaryIndexId,
-				gpxTrack.getTrackid(),
+				gpxTrack.getTrackid().toString(),
+                                getAdditionalData(gpxTrack),
 				globalVisibility);
 	}
 
@@ -265,6 +266,40 @@ public class GpxIngestPlugin implements
 		return new Index[] {};
 	}
 
+        private Map<String, Map<String,String>> getAdditionalData(final GpxTrack gpxTrack) {
+            Map<String, Map<String,String>> pathDataSet = new  HashMap<String, Map<String,String>>();
+            Map<String,String> dataSet =  new HashMap<String,String>();
+            pathDataSet.put("gpx.trk", dataSet);
+            
+			dataSet.put(
+					"TrackId",
+					gpxTrack.getTrackid().toString());
+			dataSet.put(
+					"UserId",
+					gpxTrack.getUserid().toString());
+			dataSet.put(
+					"User",
+					gpxTrack.getUser().toString());
+			dataSet.put(
+					"Description",
+					gpxTrack.getDescription().toString());
+
+			if ((gpxTrack.getTags() != null) && (gpxTrack.getTags().size() > 0)) {
+				final String tags = org.apache.commons.lang.StringUtils.join(
+						gpxTrack.getTags(),
+						TAG_SEPARATOR);
+				dataSet.put(
+						"Tags",
+						tags);
+			}
+			else {
+				dataSet.put(
+						"Tags",
+						null);
+			}
+                        return pathDataSet;
+        }
+        
 	public static class IngestGpxTrackFromHdfs implements
 			IngestWithMapper<GpxTrack, SimpleFeature>
 	{

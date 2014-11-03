@@ -1,35 +1,32 @@
 package mil.nga.giat.geowave.types.gpx;
 
+import com.vividsolutions.jts.geom.Coordinate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
-
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
-
 import mil.nga.giat.geowave.index.ByteArrayId;
 import mil.nga.giat.geowave.index.StringUtils;
 import mil.nga.giat.geowave.ingest.GeoWaveData;
 import mil.nga.giat.geowave.store.CloseableIterator;
 import mil.nga.giat.geowave.store.GeometryUtils;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
-
-import com.vividsolutions.jts.geom.Coordinate;
-import java.util.Arrays;
-import java.util.Collections;
 
 public class GPXConsumer implements
 		CloseableIterator<GeoWaveData<SimpleFeature>>
@@ -60,7 +57,7 @@ public class GPXConsumer implements
 	final ByteArrayId primaryIndexId;
 	final String inputID;
 	final String globalVisibility;
-	long trackID = 0;
+        final Map<String,Map<String,String>> additionalData;
 
 	final XMLInputFactory inputFactory = XMLInputFactory.newInstance();
 
@@ -71,16 +68,19 @@ public class GPXConsumer implements
 	XMLEventReader eventReader;
 	GeoWaveData<SimpleFeature> nextFeature = null;
 	Coordinate nextCoordinate = null;
+        
 
 	public GPXConsumer(
 			InputStream fileStream,
 			ByteArrayId primaryIndexId,
 			String inputID,
+                        Map<String,Map<String,String>> additionalData,
 			String globalVisibility ) {
 		super();
 		this.fileStream = fileStream;
 		this.primaryIndexId = primaryIndexId;
 		this.inputID = inputID;
+                this.additionalData = additionalData;
 		this.globalVisibility = globalVisibility;
 		pointBuilder = new SimpleFeatureBuilder(
 				pointType);
@@ -382,6 +382,18 @@ public class GPXConsumer implements
 			return elementType;
 		}
 
+                public String getPath() {
+                    StringBuffer buf = new StringBuffer();
+                    WayPoint currentGP = parent;
+                    buf.append(this.elementType);
+                    while(currentGP != null) {         
+                        buf.insert(0,'.');
+                        buf.insert(0,currentGP.elementType);
+                        currentGP=currentGP.parent;
+                    }
+                    return buf.toString();
+                }
+                
 		public void addChild(
 				WayPoint child ) {
                     
@@ -575,6 +587,13 @@ public class GPXConsumer implements
 				trackBuilder.set(
 						"TrackId",
 						inputID);
+                                
+                                Map<String,String> dataSet = additionalData.get(point.getPath());
+                                if (dataSet != null) {
+                                    for (Map.Entry<String,String> entry : dataSet.entrySet()) {
+                                        trackBuilder.set(entry.getKey(), entry.getValue());
+                                    }
+                                }
 				/*
 				 * trackBuilder.set( "UserId", gpxTrack.getUserid());
 				 * trackBuilder.set( "User", gpxTrack.getUser());
@@ -585,6 +604,36 @@ public class GPXConsumer implements
 				 * org.apache.commons.lang.StringUtils.join( gpxTrack.getTags(),
 				 * TAG_SEPARATOR); trackBuilder.set( "Tags", tags); } else {
 				 * trackBuilder.set( "Tags", null); }
+                                
+                                	trackBuilder.set(
+					"NumberPoints",
+					trackPoint);
+			trackBuilder.set(
+					"TrackId",
+					gpxTrack.getTrackid().toString());
+			trackBuilder.set(
+					"UserId",
+					gpxTrack.getUserid());
+			trackBuilder.set(
+					"User",
+					gpxTrack.getUser());
+			trackBuilder.set(
+					"Description",
+					gpxTrack.getDescription());
+
+			if ((gpxTrack.getTags() != null) && (gpxTrack.getTags().size() > 0)) {
+				final String tags = org.apache.commons.lang.StringUtils.join(
+						gpxTrack.getTags(),
+						TAG_SEPARATOR);
+				trackBuilder.set(
+						"Tags",
+						tags);
+			}
+			else {
+				trackBuilder.set(
+						"Tags",
+						null);
+			}
 				 */
 				return new GeoWaveData<SimpleFeature>(
 						trackKey,
