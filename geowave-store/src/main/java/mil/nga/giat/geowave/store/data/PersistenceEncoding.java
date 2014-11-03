@@ -121,8 +121,8 @@ public class PersistenceEncoding
 		}
 	}
 
-	// Subclasses may want to override this behavior if the belief that the
-	// index strategy is optimal
+	
+	// Subclasses may want to override this behavior if the belief that the index strategy is optimal
 	// to avoid the extra cost of checking the result
 	protected boolean overlaps(
 			final NumericData[] insertTileRange,

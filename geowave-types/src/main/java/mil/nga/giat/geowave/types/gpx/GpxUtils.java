@@ -69,6 +69,7 @@ public class GpxUtils
 		final XMLInputFactory inputFactory = XMLInputFactory.newInstance();
 		XMLEventReader eventReader = null;
 		InputStream in = null;
+                System.out.println(metadataFile.toString());
 		in = new BufferedInputStream(
 				new FileInputStream(
 						metadataFile));
