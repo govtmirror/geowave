@@ -45,6 +45,20 @@
             </trkpt>
         </trkseg>
     </trk>
+    <trk>
+        <name>B track</name>
+         <number>7</number>
+        <trkseg>
+            <trkpt lat="48.644548" lon="-121.326897">
+                <ele>10.46</ele>
+                <time>2009-11-17T18:37:26Z</time>
+            </trkpt>
+            <trkpt lat="48.645548" lon="-121.326897">
+                <ele>11.634</ele>
+                <time>2009-11-17T18:38:26Z</time>
+            </trkpt>
+        </trkseg>
+    </trk>
      <trk>
         <name>Empty track</name>
         <trkseg>         

@@ -233,6 +233,7 @@ public class GpxIngestPlugin implements
                 primaryIndexId,
                 gpxTrack.getTrackid().toString(),
                 getAdditionalData(gpxTrack),
+                true,
                 globalVisibility);
     }
 

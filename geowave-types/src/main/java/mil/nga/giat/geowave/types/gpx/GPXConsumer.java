@@ -3,6 +3,8 @@ package mil.nga.giat.geowave.types.gpx;
 import com.vividsolutions.jts.geom.Coordinate;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -69,27 +71,42 @@ public class GPXConsumer implements
     final String inputID;
     final String globalVisibility;
     final Map<String, Map<String, String>> additionalData;
+    final  boolean uniqueWayPoints;
 
     final XMLInputFactory inputFactory = XMLInputFactory.newInstance();
 
     final Stack<GPXDataElement> currentElementStack = new Stack<GPXDataElement>();
     final GPXDataElement top = new GPXDataElement(
             "gpx");
+    
+    static final NumberFormat LatLongFormat = new DecimalFormat("0000000000");
 
     XMLEventReader eventReader;
     GeoWaveData<SimpleFeature> nextFeature = null;
     Coordinate nextCoordinate = null;
 
+    /**
+     * 
+     * @param fileStream
+     * @param primaryIndexId
+     * @param inputID  prefix to all IDs except waypoints (see uniqueWayPoints)
+     * @param additionalData
+     * @param globalWayPoints if true, waypoints are globally unique, otherwise are unique to this file and should have inputID and other components added to the identifier
+  
+     * @param globalVisibility 
+     */
     public GPXConsumer(
-            InputStream fileStream,
-            ByteArrayId primaryIndexId,
-            String inputID,
-            Map<String, Map<String, String>> additionalData,
-            String globalVisibility) {
+            final InputStream fileStream,
+            final ByteArrayId primaryIndexId,
+            final String inputID,
+            final Map<String, Map<String, String>> additionalData,
+            final boolean uniqueWayPoints,
+            final String globalVisibility) {
         super();
         this.fileStream = fileStream;
         this.primaryIndexId = primaryIndexId;
         this.inputID = inputID;
+        this.uniqueWayPoints = uniqueWayPoints;
         this.additionalData = additionalData;
         this.globalVisibility = globalVisibility;
         pointBuilder = new SimpleFeatureBuilder(
@@ -419,14 +436,14 @@ public class GPXConsumer implements
 
         }
 
-        public String composeID(String prefix, boolean includeLatLong) {
+        public String composeID(String prefix, boolean includeLatLong, boolean includeParent) {
             StringBuffer buf = new StringBuffer();
             buf.append(prefix);
             if (prefix.length() > 0) {
                 buf.append('_');
             }
-            if (parent != null) {
-                String parentID = parent.composeID("", false);
+            if (parent != null && includeParent) {
+                String parentID = parent.composeID("", false, true);
                 if (parentID.length() > 0) {
                     buf.append(parentID);
                     buf.append('_');
@@ -439,7 +456,7 @@ public class GPXConsumer implements
                 buf.append('_');
             }
             if (includeLatLong && lat != null && lon != null) {
-                buf.append(lat.hashCode()).append('_').append(lon.hashCode());
+                buf.append(toID(lat)).append('_').append(toID(lon));
                 buf.append('_');
             }
             buf.deleteCharAt(buf.length() - 1);
@@ -605,7 +622,7 @@ public class GPXConsumer implements
                     trackBuilder.set(
                             "TrackId",
                             inputID);
-                    return buildGeoWaveDataInstance( element.composeID(inputID, false), primaryIndexId, trackKey, trackBuilder, additionalData.get(element.getPath()));
+                    return buildGeoWaveDataInstance( element.composeID(inputID, false, true), primaryIndexId, trackKey, trackBuilder, additionalData.get(element.getPath()));
                 }
                 break;
             }
@@ -615,20 +632,20 @@ public class GPXConsumer implements
                     trackBuilder.set(
                             "TrackId",
                             inputID);
-                    return buildGeoWaveDataInstance( element.composeID(inputID, false), primaryIndexId, routeKey, routeBuilder, additionalData.get(element.getPath()));
+                    return buildGeoWaveDataInstance( element.composeID(inputID, false, true), primaryIndexId, routeKey, routeBuilder, additionalData.get(element.getPath()));
                 }
                 break;
             }
             case "wpt": {
 
                 if (element.build(waypointBuilder)) {
-                    return buildGeoWaveDataInstance( element.composeID("", true), primaryIndexId, waypointKey, waypointBuilder, additionalData.get(element.getPath()));
+                    return buildGeoWaveDataInstance( element.composeID(uniqueWayPoints ? "" : inputID, true, !uniqueWayPoints), primaryIndexId, waypointKey, waypointBuilder, additionalData.get(element.getPath()));
                 }
                 break;
             }
             case "rtept": {
                 if (element.build(waypointBuilder)) {
-                    return buildGeoWaveDataInstance( element.composeID(inputID, true), primaryIndexId, waypointKey, waypointBuilder, additionalData.get(element.getPath()));
+                    return buildGeoWaveDataInstance( element.composeID(inputID, true, true), primaryIndexId, waypointKey, waypointBuilder, additionalData.get(element.getPath()));
                 }
                 break;
             }
@@ -643,7 +660,7 @@ public class GPXConsumer implements
                                 "Timestamp",
                                 null);
                     }
-                    return buildGeoWaveDataInstance( element.composeID(inputID, false), primaryIndexId, pointKey, pointBuilder, additionalData.get(element.getPath()));
+                    return buildGeoWaveDataInstance( element.composeID(inputID, false, true), primaryIndexId, pointKey, pointBuilder, additionalData.get(element.getPath()));
                 }
                 break;
             }
@@ -663,5 +680,9 @@ public class GPXConsumer implements
                 key,
                 primaryIndexId,
                 builder.buildFeature(id));
+    }
+    
+    private static String toID(Double val) {
+       return  LatLongFormat.format(val.doubleValue()*10000000);
     }
 }
