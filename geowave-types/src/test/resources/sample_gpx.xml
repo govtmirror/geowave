@@ -33,7 +33,7 @@
         <time>2009-10-17T22:58:43Z</time>
     </metadata>
     <trk>
-        <name>Example GPX Document</name>
+        <name>A track</name>
         <trkseg>
             <trkpt lat="47.644548" lon="-122.326897">
                 <ele>4.46</ele>
@@ -41,8 +41,13 @@
             </trkpt>
             <trkpt lat="47.645548" lon="-122.326897">
                 <ele>4.634</ele>
-                <time>2009-10-17T18:37:26Z</time>
+                <time>2009-10-17T18:38:26Z</time>
             </trkpt>
+        </trkseg>
+    </trk>
+     <trk>
+        <name>Empty track</name>
+        <trkseg>         
         </trkseg>
     </trk>
     <wpt lat="42.246950" lon="-71.461807">
@@ -77,4 +82,7 @@
             <name>rtename2</name>
         </rtept>
     </rte>
+     <rte>
+        <name>ROUT135ASP_EMpty</name>
+     </rte>
 </gpx>

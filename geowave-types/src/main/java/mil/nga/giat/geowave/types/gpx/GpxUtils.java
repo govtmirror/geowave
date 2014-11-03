@@ -249,18 +249,6 @@ public class GpxUtils
 				true).buildDescriptor(
 				"Name"));
 		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
-				Date.class).nillable(
-				true).buildDescriptor(
-				"StartTimeStamp"));
-		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
-				Date.class).nillable(
-				true).buildDescriptor(
-				"EndTimeStamp"));
-		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
-				Long.class).nillable(
-				true).buildDescriptor(
-				"Duration"));
-		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
 				Long.class).nillable(
 				true).buildDescriptor(
 				"NumberPoints"));
@@ -280,10 +268,7 @@ public class GpxUtils
 				String.class).nillable(
 				true).buildDescriptor(
 				"Description"));
-		simpleFeatureTypeBuilder.add(attributeTypeBuilder.binding(
-				String.class).nillable(
-				true).buildDescriptor(
-				"Tags"));
+
 
 		return simpleFeatureTypeBuilder.buildFeatureType();
 

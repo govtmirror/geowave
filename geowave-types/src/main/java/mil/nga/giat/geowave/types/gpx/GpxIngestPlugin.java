@@ -114,7 +114,7 @@ public class GpxIngestPlugin implements
                 "gpx")) {
             return true;
         }
-		// otherwise take a quick peek at the file to ensure it matches the GPX
+        // otherwise take a quick peek at the file to ensure it matches the GPX
         // schema
         try {
             return GpxUtils.validateGpx(file);

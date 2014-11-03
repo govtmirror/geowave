@@ -193,7 +193,7 @@ public class GPXConsumer implements
                 newFeature = postProcess(child);
                 if (newFeature == null && !currentElementStack.isEmpty()) {
                     currentElement = currentElementStack.peek();
-                    currentElement.removeChild(child);
+                 //   currentElement.removeChild(child);
                 }
             }
         }
@@ -467,7 +467,7 @@ public class GPXConsumer implements
                 return Arrays.asList(getCoordinate());
             }
             ArrayList<Coordinate> coords = new ArrayList<Coordinate>();
-            for (int i = 0; i < this.children.size(); i++) {
+            for (int i = 0; children != null && i < this.children.size(); i++) {
                 coords.addAll(children.get(i).buildCoordinates());
             }
             return coords;
@@ -546,19 +546,27 @@ public class GPXConsumer implements
                         new Date(
                                 timestamp));
             }
-            if (this.children != null && this.children.size() > 0) {
+            if (this.children != null) {
 
                 boolean setDuration = true;
-
+                
                 List<Coordinate> childSequence = buildCoordinates();
+                
+                if (childSequence.size() == 0) return false;
+                  
                 if (childSequence.size() > 1) {
                     waypointBuilder.set(
                             "geometry",
                             GeometryUtils.GEOMETRY_FACTORY.createLineString(childSequence.toArray(new Coordinate[childSequence.size()])));
+                } else {
+                    waypointBuilder.set(
+                            "geometry",
+                            GeometryUtils.GEOMETRY_FACTORY.createPoint(childSequence.get(0)));
                 }
                 waypointBuilder.set(
                         "NumberPoints",
                         childSequence.size());
+                              
 
                 Long minTime = getStartTime();
                 if (minTime != null) {
@@ -568,12 +576,8 @@ public class GPXConsumer implements
                                     minTime));
                 } else {
                     setDuration = false;
-
-                    waypointBuilder.set(
-                            "StartTimeStamp",
-                            null);
                 }
-                Long maxTime = getStartTime();
+                Long maxTime = getEndTime();
                 if (maxTime != null) {
                     waypointBuilder.set(
                             "EndTimeStamp",
@@ -581,20 +585,12 @@ public class GPXConsumer implements
                                     maxTime));
                 } else {
                     setDuration = false;
-
-                    waypointBuilder.set(
-                            "EndTimeStamp",
-                            null);
                 }
                 if (setDuration) {
                     waypointBuilder.set(
                             "Duration",
                             maxTime - minTime);
-                } else {
-                    waypointBuilder.set(
-                            "Duration",
-                            null);
-                }
+                } 
             }
             return true;
         }
@@ -605,7 +601,7 @@ public class GPXConsumer implements
 
         switch (element.elementType) {
             case "trk": {
-                if (element.build(trackBuilder)) {
+                if (element.children != null && element.build(trackBuilder)) {
                     trackBuilder.set(
                             "TrackId",
                             inputID);
@@ -615,7 +611,7 @@ public class GPXConsumer implements
             }
             case "rte": {
 
-                if (element.build(routeBuilder)) {
+                if (element.children != null && element.build(routeBuilder)) {
                     trackBuilder.set(
                             "TrackId",
                             inputID);
@@ -627,7 +623,6 @@ public class GPXConsumer implements
 
                 if (element.build(waypointBuilder)) {
                     return buildGeoWaveDataInstance( element.composeID("", true), primaryIndexId, waypointKey, waypointBuilder, additionalData.get(element.getPath()));
-
                 }
                 break;
             }
@@ -650,7 +645,6 @@ public class GPXConsumer implements
                     }
                     return buildGeoWaveDataInstance( element.composeID(inputID, false), primaryIndexId, pointKey, pointBuilder, additionalData.get(element.getPath()));
                 }
-
                 break;
             }
         }
